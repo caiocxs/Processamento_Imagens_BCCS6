@@ -4,6 +4,53 @@ from PIL.ExifTags import TAGS, GPSTAGS
 import io
 import webbrowser
 import os
+import requests
+
+image_atual = None
+image_path = None
+
+def url_download(url):
+    global image_atual
+    try:
+        r = requests.get(url, stream=True)
+        if r.status_code == 200:
+            image_atual = Image.open(io.BytesIO(r.content))
+            show_image()
+        else:
+            sg.popup("Falha ao baixar a imagem. Verifique a URL e tente novamente.")
+    except Exception as e:
+        sg.popup(f"Erro ao baixar a imagem: {str(e)}")
+
+def show_image():
+    global image_atual
+    try:
+        resized_img = resize_image(image_atual)
+        img_bytes = io.BytesIO()
+        resized_img.save(img_bytes, format='PNG')
+        window['-IMAGE-'].update(data=img_bytes.getvalue())
+    except Exception as e:
+        sg.popup(f"Erro ao exibir a imagem: {str(e)}")
+
+def open_image(filename):
+    global image_atual
+    global image_path
+    try:
+        image_path = filename
+        image_atual = Image.open(filename)    
+        show_image()
+    except Exception as e:
+        sg.popup(f"Erro ao abrir a imagem: {str(e)}")
+
+def save_image(filename):
+    global image_atual
+    try:
+        if image_atual:
+            with open(filename, 'wb') as file:
+                image_atual.save(file)
+        else:
+            sg.popup("Nenhuma imagem aberta.")
+    except Exception as e:
+        sg.popup(f"Erro ao salvar a imagem: {str(e)}")
 
 def resize_img_proportional(path):
     img = Image.open(path)
@@ -11,11 +58,15 @@ def resize_img_proportional(path):
     new_w, new_h = (800, 600)
     width, height = img.size
 
+    if (width > height):
+        x = 1
+    
     proportion = width * new_h / width
     new_w = proportion
 
     img = img.resize((int(new_w), int(new_h)), Image.Resampling.LANCZOS)
     return img
+
 
 def resize_img(size, image, difference):
     img = image
@@ -25,16 +76,18 @@ def resize_img(size, image, difference):
     img = img.resize(x, Image.Resampling.LANCZOS)
     return img
 
+
 def convert_to_degrees(value):
         d = float(value[0])
         m = float(value[1])
         s = float(value[2])
         return d + (m / 60.0) + (s / 3600.0)
 
+
 def show_link_popup(latitude, longitude):
     layout = [
         [sg.Text("Click the link below:")],
-        [sg.Text(f"https://www.google.com/maps?q={latitude},{longitude}", enable_events=True, key='-LINK-', tooltip=f"https://www.google.com/maps?q={latitude},{longitude}")],
+        [sg.Text(f"See on the map these coordinates: ({latitude}, {longitude})", enable_events=True, key='-LINK-', tooltip=f"https://www.google.com/maps?q={latitude},{longitude}")],
         [sg.Button('Close')]
     ]
 
@@ -54,9 +107,6 @@ path = None
 
 layout2 = [
     [sg.Menu([["File", ["Open", "About", "Quit"]], ["EXIF", ["Show image data", "Show GPS data"]], ["Help", ["Credits"]]])],
-    #[sg.Text("Thank you for coming! ;`3")], [sg.Text("What's your name?")],
-    #[sg.InputText(key = "-INPUT-")],
-    #[sg.Button(f"That's my name")],
     [sg.Image(key = "-IMAGE-", size = (800,600))],
     [sg.Sizegrip()]
 ]
