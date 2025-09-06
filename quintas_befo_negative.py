@@ -1,5 +1,5 @@
 import FreeSimpleGUI as sg
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, ImageFilter
 import io
 import os
 import webbrowser
@@ -8,6 +8,35 @@ import requests
 image_atual = None
 image_path = None
 image_anterior = None
+
+def apply_four_bits_filter():
+    global image_atual
+    global image_anterior
+    try:
+        if image_atual:
+            image_anterior  = image_atual.copy()
+            image_atual = image_atual.convert('P', palette=Image.ADAPTIVE, colors = 16)
+            show_image()
+    except:
+        sg.popup("No image is selected")
+
+def blur_filter():
+    global image_atual
+    global image_anterior
+
+    radius = sg.popup_get_text('Type a valid entry Blur (0-20):', default_text = '5')
+    radius = int(radius)
+    radius = max(0, min(20, int(radius)))
+
+    try:
+        if image_atual:
+            image_anterior = image_atual.copy()
+            image_atual = image_atual.filter(ImageFilter.GaussianBlur(radius))
+            show_image()
+        else:
+            sq.popup("No open image")
+    except:
+        sg.popup("Error")
 
 def url_download(url):
     global image_atual
@@ -172,6 +201,34 @@ def sepia_img_colors():
     except Exception as e:
         sg.popup(f"Erro ao inverter as cores: {str(e)}")
 
+def preto_branco_img_colors():
+    global image_anterior
+    global image_atual
+    try:
+        filter_r = 0.3
+        filter_g = 0.59
+        filter_b = 0.11
+        if image_atual:
+            new_img = image_atual.load()
+            image_anterior = image_atual.copy()
+
+            width, height = image_atual.size
+            for column in range(0, height):
+                for row in range(0, width):
+                    r, g, b = image_atual.getpixel((row, column))
+
+                    r = int(r * filter_r)
+                    g = int(g * filter_g) 
+                    b = int(b * filter_b) 
+
+                    tudo = r + g + b
+
+                    new_img[row,column] = (tudo,tudo,tudo)
+            
+            show_image()
+    except Exception as e:
+        sg.popup(f"Erro ao inverter as cores: {str(e)}")
+
 def undo():
     global image_anterior
     global image_atual
@@ -186,7 +243,7 @@ def undo():
 layout = [
     [sg.Menu([
             ['Arquivo', ['Abrir', 'Abrir URL', 'Salvar', 'Fechar']],
-            ['EXIF', ['Mostrar dados da imagem', 'Mostrar dados de GPS', 'Inverter', 'Sépia']], 
+            ['EXIF', ['Mostrar dados da imagem', 'Mostrar dados de GPS', 'Inverter', 'Sépia', 'Preto / Branco', '4 bits', 'Blur']], 
             ['Sobre a image', ['Informacoes']], 
             ['Comandos', ['Desfazer']],
             ['Sobre', ['Desenvolvedor']]
@@ -218,8 +275,14 @@ while True:
         invert_img_colors()
     elif event == 'Sépia':
         sepia_img_colors()
+    elif event == 'Preto / Branco':
+        preto_branco_img_colors()
+    elif event == '4 bits':
+        apply_four_bits_filter()
     elif event == 'Informacoes':
         info_image()
+    elif event == "Blur":
+        blur_filter()
     elif event == "Desfazer":
         undo()
     elif event == 'Mostrar dados da imagem':
@@ -227,6 +290,6 @@ while True:
     elif event == 'Mostrar dados de GPS':
         gps_data()
     elif event == 'Desenvolvedor':
-        sg.popup('Desenvolvido por [Seu Nome] - BCC 6º Semestre')
+        sg.popup('Desenvolvido por Caiozika 👌👌👌👌👌👌👌')
 
 window.close()
